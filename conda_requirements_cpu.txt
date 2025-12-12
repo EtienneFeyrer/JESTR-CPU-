@@ -1,0 +1,35 @@
+# CPU-only conda environment spec
+# create with: conda create -n jestrserver -c pytorch -c conda-forge -c defaults --file conda_requirements_cpu.txt
+python=3.10
+pip
+setuptools
+wheel
+numpy<2
+scipy=1.10.1
+pandas=2.1.*
+scikit-learn=1.3.*
+matplotlib-base
+networkx
+pyyaml
+rdkit=2022.03.5
+h5py
+lxml
+openpyxl
+requests
+tqdm
+joblib
+threadpoolctl
+pytorch=2.0.1
+torchvision=0.15.2
+torchaudio=2.0.2
+dgl=1.1.2
+ffmpeg
+ipython
+ipykernel
+jupyter
+notebook
+jinja2
+psutil
+pyteomics
+reportlab
+pubchempy

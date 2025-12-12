@@ -5,17 +5,17 @@ Created on Sat Aug 12 20:47:14 2023
 @author: apurv
 """
 import yaml
-from utils import DatasetBuilder, MultiView_data, collate_contr_views, Print, load_models, contrastive_loss
-from utils import fp_bce_loss, fp_cos_loss, fp_cos, print_hp, Spectra_data, collate_spectra_data, augmented_cand_loss
-from utils import MyEarlyStopping, save_all_models, set_saved_best_model_names, augmented_cand_loss_spec
-from dataset import load_contrastive_data, load_spectra_data
+from .utils import DatasetBuilder, MultiView_data, collate_contr_views, Print, load_models, contrastive_loss
+from .utils import fp_bce_loss, fp_cos_loss, fp_cos, print_hp, Spectra_data, collate_spectra_data, augmented_cand_loss
+from .utils import MyEarlyStopping, save_all_models, set_saved_best_model_names, augmented_cand_loss_spec
+from .dataset import load_contrastive_data, load_spectra_data
 import sys
 import os
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch
 import pickle
-from models import MolEnc, SpecEncMLP_BIN
+from .models import MolEnc, SpecEncMLP_BIN
 import matplotlib.pyplot as plt
 import time
 import dgl
@@ -42,9 +42,15 @@ def train_contr(dataset_builder, molgraph_dict, params, output, device, data_pat
     if not no_data:
         train_dl = DataLoader(contr_ds, collate_fn=collate_fn, **dl_params)
         
-    sample_g = molgraph_dict[list(molgraph_dict.keys())[0]]
-    x_size = sample_g.ndata['h'].shape[1]
-    e_size = sample_g.edata['e'].shape[1]
+    # Get feature sizes from molgraph_dict if available, otherwise use default params
+    if molgraph_dict and len(molgraph_dict) > 0:
+        sample_g = molgraph_dict[list(molgraph_dict.keys())[0]]
+        x_size = sample_g.ndata['h'].shape[1]
+        e_size = sample_g.edata['e'].shape[1]
+    else:
+        # Use feature sizes from params (for inference mode with no_data=True)
+        x_size = len(params['element_list'])  # Number of node features
+        e_size = params.get('edge_features', 14)  # Default edge features
     
     mol_enc_model = MolEnc(params, x_size)
     mol_enc_model = mol_enc_model.to(device)

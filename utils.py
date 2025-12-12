@@ -14,7 +14,7 @@ import dgl
 from dgllife.utils import EarlyStopping
 import random
 import random
-from dataset import single_molgraph_return
+from .dataset import single_molgraph_return
 
 class Spectra_data(Dataset):
     def __init__(self, data_list):

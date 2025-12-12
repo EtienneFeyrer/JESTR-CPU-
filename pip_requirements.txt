@@ -1,0 +1,12 @@
+# Pip packages only (install after conda environment is set up)
+cloudpickle==2.2.1
+dgllife==0.3.2
+future==0.18.3
+hyperopt==0.2.7
+py4j==0.10.9.7
+pyyaml==6.0.1
+# Model serving
+fastapi==0.104.0
+uvicorn==0.24.0
+pydantic==2.4.0
+python-multipart==0.0.20
