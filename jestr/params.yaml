@@ -9,8 +9,8 @@ no_wandb: True
 seed: 0
 debug: False
 checkpoint_pth: ""
-checkpoint_pth_spec_enc: "../pretrained_models/MassSpecGym/pretrained_spec_enc_model_1741546103623_best.pt"
-checkpoint_pth_mol_enc: "../pretrained_models/MassSpecGym/pretrained_mol_enc_model_1741546103623_best.pt"
+checkpoint_pth_spec_enc: "./pretrained_models/MassSpecGym/pretrained_spec_enc_model_1741546103623_best.pt"
+checkpoint_pth_mol_enc: "./pretrained_models/MassSpecGym/pretrained_mol_enc_model_1741546103623_best.pt"
 
 # Training setup
 max_epochs: 1000 
@@ -47,7 +47,7 @@ molecule_view: "MolGraph"
 element_list: ['H', 'C',  'O', 'N', 'P', 'S', 'Cl', 'F', 'Br', 'I', 'Si', 'B', 'As', 'Se']
 atom_feature: 'full'
 bond_feature: 'full'
-
+gnn_input_dim: 78 
 
 
 ############################## Task and model ##############################

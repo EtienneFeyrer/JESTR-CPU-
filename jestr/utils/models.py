@@ -9,7 +9,7 @@ def get_spec_encoder(spec_enc:str, args):
 
 def get_mol_encoder(mol_enc: str, args):
     return {'GNN': MolEnc}[mol_enc](args, in_dim=78)
-
+"""
 def get_model(model:str,
               params):
     
@@ -37,4 +37,44 @@ def get_model(model:str,
         model.mol_enc_model.load_state_dict(torch.load(params['checkpoint_pth_mol_enc'] , weights_only=True), strict=False)
         print("Loaded molecular encoder from checkpoint")
 
+    return model
+"""
+def get_model(model: str, params, device=None):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    if model == 'contrastive':
+        model = ContrastiveModel(**params)
+    else:
+        raise Exception(f"Model {model} not implemented.")
+    
+    # If checkpoint path is provided, load the model from the checkpoint 
+    if params['checkpoint_pth'] is not None and params['checkpoint_pth'] != "":
+        model = type(model).load_from_checkpoint(
+            params['checkpoint_pth'],
+            map_location=device,
+            log_only_loss_at_stages=params['log_only_loss_at_stages'],
+            df_test_path=params['df_test_path']
+        )
+        print("Loaded Model from checkpoint")
+    
+    # Load spectral model checkpoint
+    if params['checkpoint_pth_spec_enc'] is not None and params['checkpoint_pth_spec_enc'] != "":
+        try:
+            state_dict = torch.load(params['checkpoint_pth_spec_enc'], map_location=device, weights_only=False)
+            model.spec_enc_model.load_state_dict(state_dict)
+            print("Loaded spectral encoder from checkpoint")
+        except Exception as e:
+            print(f"Warning: Could not load spectral encoder: {e}")
+
+    # Load molecule model checkpoint
+    if params['checkpoint_pth_mol_enc'] is not None and params['checkpoint_pth_mol_enc'] != "":
+        try:
+            state_dict = torch.load(params['checkpoint_pth_mol_enc'], map_location=device, weights_only=False)
+            model.mol_enc_model.load_state_dict(state_dict, strict=False)
+            print("Loaded molecular encoder from checkpoint")
+        except Exception as e:
+            print(f"Warning: Could not load molecular encoder: {e}")
+
+    model.to(device)
     return model
