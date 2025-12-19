@@ -19,6 +19,7 @@ from jestr.utils.data import get_spec_featurizer, get_mol_featurizer, get_test_m
 from jestr.utils.models import get_model
 from jestr.models.spec_encoder import SpecEncMLP_BIN
 from jestr.models.mol_encoder import MolEnc
+from concurrent.futures import ProcessPoolExecutor
 
 PARAMS = {}
 try:
@@ -244,6 +245,51 @@ def molecule_encoder(model, params, smiles, device):
         embedding = model(mol_graph)
     
     return embedding.squeeze(0)
+
+
+def molecule_encoder_batch(model, params, smiles_dict, device):
+    """Encode molecules using JESTR molecule encoder in parallel processes.
+    
+    Takes a dictionary of {id: smiles} and returns {id: embedding}.
+    Processes in parallel batches of 50 SMILES.
+    """
+    
+    def encode_single(smiles):
+        """Encode a single SMILES string"""
+        try:
+            embedding = molecule_encoder(model, params, smiles, device)
+            return embedding.cpu().numpy()
+        except Exception as e:
+            print(f"✗ Error encoding {smiles}: {e}")
+            return None
+    
+    batch_size = 100
+    embeddings_dict = {}
+    
+    smiles_items = list(smiles_dict.items())
+    
+    # Use ProcessPoolExecutor for true parallelism
+    with ProcessPoolExecutor(max_workers=2) as executor:
+        for batch_start in range(0, len(smiles_items), batch_size):
+            batch_end = min(batch_start + batch_size, len(smiles_items))
+            batch = smiles_items[batch_start:batch_end]
+            
+            # Submit batch for parallel processing
+            futures = {
+                executor.submit(encode_single, smiles): mol_id 
+                for mol_id, smiles in batch
+            }
+            
+            # Collect results
+            for future in futures:
+                mol_id = futures[future]
+                embedding = future.result()
+                if embedding is not None:
+                    embeddings_dict[mol_id] = embedding
+            
+            print(f"Processed {batch_end}/{len(smiles_items)} molecules")
+    
+    return embeddings_dict
 
 def compute_similarity_batch(model, params, spectrum_mz, spectrum_intensity, 
                              candidate_smiles_list, device):
