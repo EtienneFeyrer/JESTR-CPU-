@@ -248,48 +248,29 @@ def molecule_encoder(model, params, smiles, device):
 
 
 def molecule_encoder_batch(model, params, smiles_dict, device):
-    """Encode molecules using JESTR molecule encoder in parallel processes.
+    """Encode molecules using JESTR molecule encoder.
     
-    Takes a dictionary of {id: smiles} and returns {id: embedding}.
-    Processes in parallel batches of 50 SMILES.
+    Sequential processing - server workers handle concurrency.
     """
+    embeddings_dict = {}
+    smiles_items = list(smiles_dict.items())
+    total = len(smiles_items)
     
-    def encode_single(smiles):
-        """Encode a single SMILES string"""
+    for idx, (mol_id, smiles) in enumerate(smiles_items):
         try:
             embedding = molecule_encoder(model, params, smiles, device)
-            return embedding.cpu().numpy()
+            embeddings_dict[mol_id] = embedding.cpu().numpy()
+            
+            if (idx + 1) % 100 == 0:
+                print(f"Processed {idx + 1}/{total} molecules")
+        
         except Exception as e:
             print(f"✗ Error encoding {smiles}: {e}")
-            return None
+            continue
     
-    batch_size = 100
-    embeddings_dict = {}
-    
-    smiles_items = list(smiles_dict.items())
-    
-    # Use ProcessPoolExecutor for true parallelism
-    with ProcessPoolExecutor(max_workers=2) as executor:
-        for batch_start in range(0, len(smiles_items), batch_size):
-            batch_end = min(batch_start + batch_size, len(smiles_items))
-            batch = smiles_items[batch_start:batch_end]
-            
-            # Submit batch for parallel processing
-            futures = {
-                executor.submit(encode_single, smiles): mol_id 
-                for mol_id, smiles in batch
-            }
-            
-            # Collect results
-            for future in futures:
-                mol_id = futures[future]
-                embedding = future.result()
-                if embedding is not None:
-                    embeddings_dict[mol_id] = embedding
-            
-            print(f"Processed {batch_end}/{len(smiles_items)} molecules")
-    
+    print(f"✓ Encoded {len(embeddings_dict)}/{total} molecules")
     return embeddings_dict
+
 
 def compute_similarity_batch(model, params, spectrum_mz, spectrum_intensity, 
                              candidate_smiles_list, device):
