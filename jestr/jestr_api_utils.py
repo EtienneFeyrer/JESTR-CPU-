@@ -193,12 +193,15 @@ def get_cached_mol_featurizer(molecule_view, params):
         _mol_featurizer_cache[key] = get_mol_featurizer(molecule_view, params)
     return _mol_featurizer_cache[key]
 
-def spectrum_encoder(model, params, mz_array, intensity_array, device):
-    """Encode spectrum using JESTR spectrum encoder."""
+# def spectrum_encoder(model, params, mz_array, intensity_array, device):
+def spectrum_encoder(model, params, spectra, device):
+    """Encode each spectra of a dictionary and extend the dictionary with embeddings 
+    using JESTR spectrum encoder."""
     import torch
     import numpy as np
     import matchms
-    
+    # given is numpy array of 
+
     # Get spec featurizer - returns dict: {'SpecBinnerLog': SpecBinnerLog(...)}
     spectra_view = params.get('spectra_view', 'SpecBinnerLog')
     spec_featurizer_dict = get_spec_featurizer(spectra_view, params)
@@ -208,24 +211,56 @@ def spectrum_encoder(model, params, mz_array, intensity_array, device):
         spec_featurizer = spec_featurizer_dict[spectra_view]
     else:
         spec_featurizer = spec_featurizer_dict
+        
+    for spec in spectra:
+        mz_array = np.array(spectra[spec].mz, dtype=np.float32)
+        intensity_array = np.array(spectra[spec].intensities, dtype=np.float32)
+
+        # Create spectrum dict
+        spectrum = matchms.Spectrum(
+            mz=np.array(mz_array, dtype=float),
+            intensities=np.array(intensity_array, dtype=float)
+        )
     
-    # Create spectrum dict
-    spectrum = matchms.Spectrum(
-        mz=np.array(mz_array, dtype=float),
-        intensities=np.array(intensity_array, dtype=float)
-    )
+        # Call the featurizer - it's now callable
+        spec_features = spec_featurizer(spectrum)
+        
+        # Convert to tensor
+        spec_tensor = torch.tensor(spec_features, dtype=torch.float32).unsqueeze(0).to(device)
+        
+        with torch.no_grad():
+            embedding = model(spec_tensor)
+        
+        # Convert to numpy immediately (saves memory, easier to serialize)
+        spectra[spec].embedding = embedding.squeeze(0).detach().cpu().numpy()
+    
+
+    # spectra_view = params.get('spectra_view', 'SpecBinnerLog')
+    # spec_featurizer_dict = get_spec_featurizer(spectra_view, params)
+    
+    # # Extract the actual featurizer object from dict
+    # if isinstance(spec_featurizer_dict, dict):
+    #     spec_featurizer = spec_featurizer_dict[spectra_view]
+    # else:
+    #     spec_featurizer = spec_featurizer_dict
+    
+    # # Create spectrum dict
+    # spectrum = matchms.Spectrum(
+    #     mz=np.array(mz_array, dtype=float),
+    #     intensities=np.array(intensity_array, dtype=float)
+    # )
     
     
-    # Call the featurizer - it's now callable
-    spec_features = spec_featurizer(spectrum)
+    # # Call the featurizer - it's now callable
+    # spec_features = spec_featurizer(spectrum)
     
-    # Convert to tensor
-    spec_tensor = torch.tensor(spec_features, dtype=torch.float32).unsqueeze(0).to(device)
+    # # Convert to tensor
+    # spec_tensor = torch.tensor(spec_features, dtype=torch.float32).unsqueeze(0).to(device)
     
-    with torch.no_grad():
-        embedding = model(spec_tensor)
+    # with torch.no_grad():
+    #     embedding = model(spec_tensor)
     
-    return embedding.squeeze(0)
+    # return embedding.squeeze(0)
 
 def molecule_encoder(model, params, smiles, device):
     """Encode molecule using JESTR molecule encoder."""
